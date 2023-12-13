@@ -2,6 +2,7 @@ use std::collections::HashSet;
 use std::time::Duration;
 
 use chrono::prelude::*;
+use serde::{Deserialize, Serialize};
 
 // -> tags/catogeries -> DAG
 // -> time tracking
@@ -14,26 +15,30 @@ use chrono::prelude::*;
 // TODO repeated task?
 // optional fields like due date
 
-struct Task {
-    categories: HashSet<Category>,
-    habit: Option<Habit>,
-    due_date: Option<DateTime<Utc>>,
-    time_tracks: Vec<DateTime<Utc>>, 
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Task {
+    pub id: usize,
+    pub name: String,
+    // categories: HashSet<Category>,
+    // habit: Option<Habit>,
+    // due_date: Option<DateTime<Utc>>,
+    // time_tracks: Vec<DateTime<Utc>>, 
 }
 
 impl Task {
-    fn complete(&mut self) {
-        self.habit.as_mut().map(|h| h.increment());
-    }
-    fn is_in_progress(&self) -> bool {
-        self.time_tracks.len() % 2 == 1
-    }
-    fn change_session_state(&mut self) {
-        self.time_tracks.push(Utc::now());
-    }
-    fn total_time_spent(&self) -> u32 {
-        todo!()
-    }
+    // fn complete(&mut self) {
+    //     self.habit.as_mut().map(|h| h.increment());
+    // }
+    // fn is_in_progress(&self) -> bool {
+    //     self.time_tracks.len() % 2 == 1
+    // }
+    // fn change_session_state(&mut self) {
+    //     self.time_tracks.push(Utc::now());
+    // }
+    // fn total_time_spent(&self) -> u32 {
+    //     todo!()
+    // }
 }
 
 
