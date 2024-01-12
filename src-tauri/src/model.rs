@@ -17,7 +17,10 @@ use serde::{Deserialize, Serialize};
 // optional fields like due date
 
 pub trait DbModel {
-    fn persist(&self, conn: &Connection) -> Result<(), String>;
+    /// Returns primary key of the inserted entity
+    fn persist(&self, conn: &Connection) -> Result<usize, String>;
+    fn update(&self, conn: &Connection) -> Result<(), String>;
+    fn delete(conn: &Connection, id: usize) -> Result<(), String>;
     fn from_row(row: &Row) -> Result<Self, String> where Self: Sized;
 }
 
@@ -57,27 +60,36 @@ impl Task {
         self.total_time_spent
     }
     pub fn add_time_track(&mut self, timestamp: DateTime<Utc>) {
-        // append to self.time_tracks vec
+        self.time_tracks.push(timestamp);
         if self.time_tracks.len() % 2 == 0 {
             self.total_time_spent = self.calculate_total_time_spent();
         }
     }
 
     fn calculate_total_time_spent(&self) -> usize {
-        todo!()
+        19
     }
 }
 
 impl DbModel for Task {
-    fn persist(&self, conn: &Connection) -> Result<(), String> {
-        // let time_tracks_repr = self.time_tracks.iter()
-        //     .map(|t| t.to_rfc2822())
-        //     .collect::<Vec<String>>()
-        //     .join(",");
+    // TODO PhatomData for this??
+    fn persist(&self, conn: &Connection) -> Result<usize, String> {
         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
 
         println!("time_tracks_repr: {:?}", time_tracks_repr);
         conn.execute("INSERT INTO tasks (name, time_tracks, total_time_spent) VALUES (?1, ?2, ?3)", (self.name.clone(), time_tracks_repr, self.total_time_spent)).unwrap();
+        Ok(conn.last_insert_rowid() as usize)
+    }
+
+    fn update(&self, conn: &Connection) -> Result<(), String> {
+        // TODO: only update the fields that actually need updating
+        let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
+        conn.execute("UPDATE tasks  SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4", (self.name.clone(), time_tracks_repr, self.total_time_spent, self.id)).unwrap();
+        Ok(())
+    }
+
+    fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+        conn.execute("DELETE FROM tasks WHERE id=?1", [id]).unwrap();
         Ok(())
     }
 

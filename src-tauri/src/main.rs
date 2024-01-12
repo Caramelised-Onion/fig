@@ -4,6 +4,7 @@
 pub mod model;
 use std::sync::Mutex;
 
+use chrono::{DateTime, Utc};
 use model::Task;
 use rusqlite::Connection;
 use model::DbModel;
@@ -37,19 +38,18 @@ fn main() {
 
     tauri::Builder::default()
     .manage(app_state)
-        .invoke_handler(tauri::generate_handler![create_task, get_all_tasks])
+        .invoke_handler(tauri::generate_handler![create_task, get_all_tasks, add_time_track, delete_task])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
 #[tauri::command]
-async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Result<String, String> {
+async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Result<usize, String> {
     println!("Creating task {}", name);
     // app_state.db_connection.lock().unwrap().execute("INSERT INTO tasks (name) VALUES (?1)", (name,)).unwrap();
     let task = Task::new(name);
     let conn = app_state.db_connection.lock().unwrap();
-    task.persist(&conn);
-    Ok(name.to_string())
+    task.persist(&conn)
 }
 
 #[tauri::command]
@@ -60,6 +60,26 @@ async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task
         Ok(Task::from_row(row).unwrap())
     }).unwrap().map(|tr| tr.unwrap());
     Ok(task_names_iter.collect())
+}
+
+#[tauri::command]
+async fn add_time_track(app_state: tauri::State<'_, AppState>, id: usize) -> Result<DateTime<Utc>, String> {
+    let conn = app_state.db_connection.lock().unwrap();
+    let now = Utc::now();
+    let mut stmt = conn.prepare("SELECT * FROM tasks WHERE id=?1").unwrap();
+    let mut task = stmt.query_row([id], |row| {
+        Ok(Task::from_row(row).unwrap())
+    }).unwrap();
+
+    task.add_time_track(now);
+    task.update(&conn).unwrap();
+    Ok(now)
+}
+
+#[tauri::command]
+async fn delete_task(app_state: tauri::State<'_, AppState>, id: usize) -> Result<(), String> {
+    let conn = app_state.db_connection.lock().unwrap();
+    Task::delete(&conn, id)
 }
 
 struct AppState {

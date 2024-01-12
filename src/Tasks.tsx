@@ -1,34 +1,28 @@
-import { useEffect, useState } from "react";
-import {Task} from "./models";
+import { invoke } from "@tauri-apps/api";
+import useTasksStore from "./state/tasks";
+import "./App.css";
+import TaskComponent from "./TaskComponent";
 
+const Tasks = () => {
+    const tasks = useTasksStore(state => state.tasks);
+    const setTasks = useTasksStore(state => state.setTasks);
 
-const Tasks = ({ tasks }: {tasks: Task[] }) => {
-    const [editedTasks, setEditedTasks] = useState<Task[]>([]);
-    useEffect(() => {
-        setEditedTasks(tasks);
-    }, [tasks]);
-
-    const handleAddTimeTrack = (taskId: number) => {
-        setEditedTasks(editedTasks.map(et => et.id === taskId ? addTimestampToTask(et) : et));       
+    const handleAddTimeTrack = async (taskId: number) => {
+        const latestTimestamp: number = await invoke("add_time_track", { id: taskId });
+        setTasks(tasks.map(t => t.id === taskId ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));       
     };
-
-    const addTimestampToTask = (t: Task): Task => {
-        // TODO: actual implementation
-        return {
-            ...t,
-            timeTracks: t.timeTracks.concat(getCurrentUnixTimestampS())
-        };
-    }
-
-    const getCurrentUnixTimestampS = (): number =>
-        Math.floor(new Date().getTime() / 1000);
 
     return (
         <div>
             <h1>Tasks</h1>
-            <ul>
-                {editedTasks.map(t => (<li key={t.name}>{t.name} {t.timeTracks} <button onClick={() => handleAddTimeTrack(t.id)}>"⏯"</button></li>))} 
-            </ul>
+            <div>
+                {tasks.map(t => (
+                    <div key={t.id}>
+                        <button onClick={() => handleAddTimeTrack(t.id)}>"⏯"</button>
+                        <TaskComponent task={t} />
+                    </div>
+                ))} 
+            </div>
         </div>
     )
 }

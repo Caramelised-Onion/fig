@@ -1,13 +1,13 @@
 import Tasks from "./Tasks";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import NewTask from "./NewTask";
 import { invoke } from "@tauri-apps/api";
 import {Task} from "./models";
+import useTasksStore from "./state/tasks";
 
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-
+  const setTasks = useTasksStore(state => state.setTasks);
   useEffect(() => {
     const fetchTasks = async () => {
       const tasksInDb: Task[] = await invoke("get_all_tasks");
@@ -16,12 +16,10 @@ function App() {
     fetchTasks();
   }, []);
 
-         {/* */}
-
   return (
     <div>
-      <NewTask tasks={tasks} setTasks={setTasks}/> 
-      <Tasks tasks={tasks}/>
+      <NewTask /> 
+      <Tasks />
     </div>
   );
 }

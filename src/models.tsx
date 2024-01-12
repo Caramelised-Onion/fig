@@ -3,5 +3,5 @@ export type Task = {
     name: string,
     timeTracks: number[],
     totalTimeSpent: number
-  }
+}
 
