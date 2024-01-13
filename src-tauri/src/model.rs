@@ -1,6 +1,6 @@
+use rusqlite::{Connection, Row};
 use std::collections::HashSet;
 use std::time::Duration;
-use rusqlite::{Connection, Row};
 
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,6 @@ use serde::{Deserialize, Serialize};
 // -> integration with calendar (certain tasks/todo can show up in your calnedar
 // -> calendar: plan vs actual execution (time and whatever intervals maths would be interesting)
 
-
 // TODO repeated task?
 // optional fields like due date
 
@@ -21,9 +20,10 @@ pub trait DbModel {
     fn persist(&self, conn: &Connection) -> Result<usize, String>;
     fn update(&self, conn: &Connection) -> Result<(), String>;
     fn delete(conn: &Connection, id: usize) -> Result<(), String>;
-    fn from_row(row: &Row) -> Result<Self, String> where Self: Sized;
+    fn from_row(row: &Row) -> Result<Self, String>
+    where
+        Self: Sized;
 }
-
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -33,8 +33,8 @@ pub struct Task {
     // categories: HashSet<Category>,
     // habit: Option<Habit>,
     // due_date: Option<DateTime<Utc>>,
-    pub time_tracks: Vec<DateTime<Utc>>, 
-    pub total_time_spent: usize
+    pub time_tracks: Vec<DateTime<Utc>>,
+    pub total_time_spent: usize,
 }
 
 impl Task {
@@ -52,10 +52,10 @@ impl Task {
             id: 0,
             name: name.to_string(),
             time_tracks: Vec::new(),
-            total_time_spent: 0
+            total_time_spent: 0,
         }
     }
-   
+
     pub fn total_time_spent(&self) -> usize {
         self.total_time_spent
     }
@@ -77,14 +77,27 @@ impl DbModel for Task {
         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
 
         println!("time_tracks_repr: {:?}", time_tracks_repr);
-        conn.execute("INSERT INTO tasks (name, time_tracks, total_time_spent) VALUES (?1, ?2, ?3)", (self.name.clone(), time_tracks_repr, self.total_time_spent)).unwrap();
+        conn.execute(
+            "INSERT INTO tasks (name, time_tracks, total_time_spent) VALUES (?1, ?2, ?3)",
+            (self.name.clone(), time_tracks_repr, self.total_time_spent),
+        )
+        .unwrap();
         Ok(conn.last_insert_rowid() as usize)
     }
 
     fn update(&self, conn: &Connection) -> Result<(), String> {
         // TODO: only update the fields that actually need updating
         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
-        conn.execute("UPDATE tasks  SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4", (self.name.clone(), time_tracks_repr, self.total_time_spent, self.id)).unwrap();
+        conn.execute(
+            "UPDATE tasks  SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4",
+            (
+                self.name.clone(),
+                time_tracks_repr,
+                self.total_time_spent,
+                self.id,
+            ),
+        )
+        .unwrap();
         Ok(())
     }
 
@@ -95,9 +108,10 @@ impl DbModel for Task {
 
     fn from_row(row: &Row) -> Result<Self, String> {
         let serialized_time_tracks: String = row.get(2).unwrap();
-        let time_tracks: Vec<DateTime<Utc>>  = serde_json::from_str(&serialized_time_tracks).unwrap();
+        let time_tracks: Vec<DateTime<Utc>> =
+            serde_json::from_str(&serialized_time_tracks).unwrap();
 
-        Ok(Task{
+        Ok(Task {
             id: row.get(0).unwrap(),
             name: row.get(1).unwrap(),
             time_tracks: time_tracks,
@@ -106,7 +120,6 @@ impl DbModel for Task {
         })
     }
 }
-
 
 struct Category {
     name: String,
@@ -121,7 +134,6 @@ struct Habit {
     time_interval: Duration,
     freq_in_interval: usize,
 }
-
 
 impl Habit {
     fn increment(&mut self) {

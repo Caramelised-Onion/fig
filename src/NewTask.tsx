@@ -19,6 +19,7 @@ const NewTask = () => {
             totalTimeSpent: 0
         }
         setTasks(tasks.concat(givenTask));
+        setTaskInput("");
     }
 
     return (
