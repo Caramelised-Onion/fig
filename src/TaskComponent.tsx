@@ -31,29 +31,27 @@ const TaskComponent = ({ task }: { task: Task }) => {
         await invoke("update_task", { updatedTask })
         setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
         setTaskNameInput("");
+        setShowEditForm(false);
     }
     
     return (
-        <div className={"box" + getClassName(task)}>
-                {task.name} {task.id}
-                <button onClick={handleDelete}>Delet</button>
-                <button onClick={handleAddTimeTrack}></button>
-                <button onClick={() => setShowEditForm(!showEditForm)}>
-                    Edit task
-                </button>
-                {
-                    showEditForm && 
-                    <div>
-                        <form onSubmit={handleSubmit}>
-                            <input 
-                                type="text"
-                                value={taskNameInput}
-                                onChange={({target}) => setTaskNameInput(target.value)} 
-                            />
-                            <button type="submit">Update task</button>
-                        </form>
-                    </div>
-                }
+        <div className={"box" + getClassName(task) + " ml-4 is-flex is-flex-direction-row"} style={{ maxWidth: '800px', width: '100%' }}>
+            {showEditForm 
+                ? 
+                    <form onSubmit={handleSubmit}>
+                        <input 
+                            type="text"
+                            value={taskNameInput}
+                            onChange={({target}) => setTaskNameInput(target.value)} 
+                        />
+                    </form>
+                : task.name
+            }
+            <button onClick={() => setShowEditForm(!showEditForm)} className="ml-4">
+                Edit task
+            </button>
+            <button onClick={handleDelete} >Delet</button>
+            <button onClick={handleAddTimeTrack}>add time track</button>
         </div>
     )
 }
