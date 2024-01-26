@@ -18,7 +18,8 @@ fn main() {
             create_task,
             get_all_tasks,
             add_time_track,
-            delete_task
+            delete_task,
+            update_task
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -109,6 +110,18 @@ async fn add_time_track(
     task.add_time_track(now);
     task.update(&conn).unwrap();
     Ok(now)
+}
+
+#[tauri::command]
+async fn update_task(
+    app_state: tauri::State<'_, AppState>,
+    updated_task: Task,
+) -> Result<(), String> {
+    let conn = app_state.db_connection.lock().unwrap();
+    match updated_task.update(&conn) {
+        Ok(_) => Ok(()),
+        Err(err) => Err(err.to_string())
+    }
 }
 
 #[tauri::command]
