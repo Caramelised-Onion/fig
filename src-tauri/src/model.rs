@@ -1,6 +1,5 @@
 use rusqlite::{Connection, Row};
 use std::collections::HashSet;
-use std::time::Duration;
 
 use chrono::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -23,6 +22,7 @@ pub trait DbModel {
     fn from_row(row: &Row) -> Result<Self, String>
     where
         Self: Sized;
+    // TODO: add a get_all method
 }
 
 #[derive(Serialize, Deserialize)]
@@ -89,7 +89,7 @@ impl DbModel for Task {
         // TODO: only update the fields that actually need updating
         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
         conn.execute(
-            "UPDATE tasks  SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4",
+            "UPDATE tasks SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4",
             (
                 self.name.clone(),
                 time_tracks_repr,
@@ -128,14 +128,60 @@ struct Category {
     children: HashSet<u32>,
 }
 
-struct Habit {
-    name: String,
-    streak: usize,
-    time_interval: Duration,
-    freq_in_interval: usize,
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Habit {
+    pub id: usize,
+    pub name: String,
+    pub streak: usize,
+    pub time_interval_s: usize,
+    pub freq_in_interval: usize,
+}
+
+impl DbModel for Habit {
+    fn persist(&self, conn: &Connection) -> Result<usize, String> {
+        conn.execute(
+            "INSERT INTO habits (name, streak, time_interval_s, freq_in_interval) VALUES (?1, ?2, ?3, ?4)",
+            (self.name.clone(), self.streak, self.time_interval_s, self.freq_in_interval),
+        )
+        .unwrap();
+        Ok(conn.last_insert_rowid() as usize)
+    }
+
+    fn update(&self, conn: &Connection) -> Result<(), String> {
+        todo!()
+    }
+
+    fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+        conn.execute("DELETE FROM habits WHERE id=?1", [id]).unwrap();
+        Ok(())
+    }
+
+    fn from_row(row: &Row) -> Result<Self, String>
+    where
+        Self: Sized 
+    {
+        Ok(Habit{
+            id: row.get(0).unwrap(),
+            name: row.get(1).unwrap(),
+            streak: row.get(2).unwrap(),
+            time_interval_s: row.get(3).unwrap(),
+            freq_in_interval: row.get(4).unwrap(),
+        })
+    }
 }
 
 impl Habit {
+    pub fn new(name: &str, time_interval_s: usize, freq_in_interval: usize) -> Self {
+        Self {
+            id: 0, 
+            name: name.to_string(), 
+            streak: 0, 
+            time_interval_s, 
+            freq_in_interval
+        }
+    }
+
     fn increment(&mut self) {
         todo!()
     }

@@ -1,28 +1,29 @@
-import Tasks from "./Tasks";
-import { useEffect } from "react";
-import NewTask from "./NewTask";
-import { invoke } from "@tauri-apps/api";
-import {Task} from "./models";
-import useTasksStore from "./state/tasks";
-import "./bulma-rtl.min.css";
+import {
+  BrowserRouter as Router,
+  Routes, Route, Link
+} from 'react-router-dom'
 
-function App() {
-  const setTasks = useTasksStore(state => state.setTasks);
-  useEffect(() => {
-    const fetchTasks = async () => {
-      const tasksInDb: Task[] = await invoke("get_all_tasks");
-      setTasks(tasksInDb.map(t => t));
-    };
-    fetchTasks();
-  }, []);
+import TaskPage from "./pages/TaskPage";
+import HabitsPage from './pages/HabitsPage';
+
+const App = () => {
+  const padding = {
+    padding: 5
+  }
 
   return (
-    <div>
-      <h1 className={"title"}>FIG</h1>
-      <NewTask /> 
-      <Tasks />
-    </div>
-  );
+    <Router>
+      <div>
+        <Link style={padding} to="/">Tasks</Link>
+        <Link style={padding} to="/habits">habits</Link>
+      </div>
+
+      <Routes>
+        <Route path="/" element={<TaskPage />} />
+        <Route path="/habits" element={<HabitsPage />} />
+      </Routes>
+    </Router>
+  )
 }
 
 export default App;
