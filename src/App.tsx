@@ -4,7 +4,7 @@ import NewTask from "./NewTask";
 import { invoke } from "@tauri-apps/api";
 import {Task} from "./models";
 import useTasksStore from "./state/tasks";
-
+import "./bulma-rtl.min.css";
 
 function App() {
   const setTasks = useTasksStore(state => state.setTasks);
@@ -18,6 +18,7 @@ function App() {
 
   return (
     <div>
+      <h1 className={"title"}>FIG</h1>
       <NewTask /> 
       <Tasks />
     </div>
