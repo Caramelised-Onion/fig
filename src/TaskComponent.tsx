@@ -20,6 +20,11 @@ const TaskComponent = ({ task }: { task: Task }) => {
         setTasks(tasks.filter(t => t.id !== task.id));
     }
 
+    const handleAddTimeTrack = async () => {
+        const latestTimestamp: number = await invoke("add_time_track", { id: task.id });
+        setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
+    }
+
     const handleSubmit = async (evt: { preventDefault: () => void }) => {
         evt.preventDefault();
         const updatedTask = { ...task, name: taskNameInput }
@@ -32,7 +37,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
         <div className={"box" + getClassName(task)}>
                 {task.name} {task.id}
                 <button onClick={handleDelete}>Delet</button>
-                {/* <button onClick={handleAddTimeTrack}></button> */}
+                <button onClick={handleAddTimeTrack}></button>
                 <button onClick={() => setShowEditForm(!showEditForm)}>
                     Edit task
                 </button>
@@ -50,7 +55,6 @@ const TaskComponent = ({ task }: { task: Task }) => {
                     </div>
                 }
         </div>
-
     )
 }
 
