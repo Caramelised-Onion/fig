@@ -6,8 +6,8 @@ use std::{env, fs};
 use std::{path::PathBuf, sync::Mutex};
 
 use chrono::{DateTime, Utc};
-use model::{DbModel, Habit};
 use model::Task;
+use model::{DbModel, Habit};
 use rusqlite::Connection;
 
 fn main() {
@@ -49,7 +49,13 @@ fn create_table(conn: &Connection) -> Result<(), std::io::Error> {
             streak INTEGER,
             time_interval_s INTEGER,
             freq_in_interval INTEGER
-        )"
+        );
+        CREATE TABLE IF NOT EXISTS intervals (
+            id    INTEGER PRIMARY KEY,
+            start_time  INTEGER NOT NULL,
+            end_time INTEGER,
+            FOREIGN KEY(task_id) REFERENCES tasks(id)
+        )",
     );
     match res {
         Ok(_) => Ok(()),
@@ -128,7 +134,7 @@ async fn update_task(
     let conn = app_state.db_connection.lock().unwrap();
     match updated_task.update(&conn) {
         Ok(_) => Ok(()),
-        Err(err) => Err(err.to_string())
+        Err(err) => Err(err.to_string()),
     }
 }
 
@@ -139,7 +145,12 @@ async fn delete_task(app_state: tauri::State<'_, AppState>, id: usize) -> Result
 }
 
 #[tauri::command]
-async fn create_habit(app_state: tauri::State<'_, AppState>, name: &str, time_interval_s: usize, freq_in_interval: usize) -> Result<usize, String> {
+async fn create_habit(
+    app_state: tauri::State<'_, AppState>,
+    name: &str,
+    time_interval_s: usize,
+    freq_in_interval: usize,
+) -> Result<usize, String> {
     let habit = Habit::new(name, time_interval_s, freq_in_interval);
     let conn = app_state.db_connection.lock().unwrap();
     habit.persist(&conn)

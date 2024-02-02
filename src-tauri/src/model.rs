@@ -1,7 +1,7 @@
 use rusqlite::{Connection, Row};
-use std::collections::HashSet;
+use std::{collections::HashSet, ops::Not};
 
-use chrono::prelude::*;
+use chrono::{prelude::*, Duration};
 use serde::{Deserialize, Serialize};
 
 // -> tags/catogeries -> DAG
@@ -22,7 +22,97 @@ pub trait DbModel {
     fn from_row(row: &Row) -> Result<Self, String>
     where
         Self: Sized;
-    // TODO: add a get_all method
+    fn get_all(conn: &Connection) -> Vec<Self>
+    where
+        Self: Sized;
+}
+
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Interval {
+    pub id: usize,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
+    pub task_id: usize,
+}
+
+impl Interval {
+    pub fn new(task_id: usize) -> Self {
+        Self {
+            id: 0,
+            start_time: Utc::now(),
+            end_time: None,
+            task_id,
+        }
+    }
+
+    pub fn is_open(&self) -> bool {
+        self.end_time.is_some()
+    }
+
+    pub fn time_spent(&self) -> Duration {
+        self.end_time
+            .unwrap_or_else(|| Utc::now())
+            .signed_duration_since(self.start_time)
+    }
+}
+
+impl DbModel for Interval {
+    fn persist(&self, conn: &Connection) -> Result<usize, String> {
+        let insert_result = match self.end_time {
+            Some(end_time) => conn.execute(
+                "INSERT INTO intervals (start_time, end_time, task_id) VALUES (?1, ?2, ?3)",
+                (
+                    self.start_time.timestamp(),
+                    end_time.timestamp(),
+                    self.task_id,
+                ),
+            ),
+            None => conn.execute(
+                "INSERT INTO intervals (start_time, task_id) VALUES (?1, ?2)",
+                (self.start_time.timestamp(), self.task_id),
+            ),
+        };
+        match insert_result {
+            Ok(_) => Ok(conn.last_insert_rowid() as usize),
+            Err(err) => Err(err.to_string()),
+        }
+    }
+
+    fn update(&self, conn: &Connection) -> Result<(), String> {
+        todo!()
+    }
+
+    fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+        todo!()
+    }
+
+    fn from_row(row: &Row) -> Result<Self, String>
+    where
+        Self: Sized,
+    {
+        let start_time = DateTime::<Utc>::from_timestamp(row.get(1).unwrap(), 0).unwrap();
+        let end_time: Option<DateTime<Utc>> = row
+            .get(2)
+            .ok()
+            .map(|ts| DateTime::from_timestamp(ts, 0))
+            .flatten();
+
+        Ok(Self {
+            id: row.get(0).unwrap(),
+            start_time,
+            end_time,
+            task_id: row.get(3).unwrap(),
+        })
+    }
+
+    fn get_all(conn: &Connection) -> Vec<Self>
+    where
+        Self: Sized,
+    {
+        todo!()
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -33,7 +123,7 @@ pub struct Task {
     // categories: HashSet<Category>,
     // habit: Option<Habit>,
     // due_date: Option<DateTime<Utc>>,
-    pub time_tracks: Vec<DateTime<Utc>>,
+    pub time_tracks: Vec<Interval>,
     pub total_time_spent: usize,
 }
 
@@ -56,18 +146,29 @@ impl Task {
         }
     }
 
+    pub fn is_ongoing(&self) -> bool {
+        self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
+    }
+
     pub fn total_time_spent(&self) -> usize {
         self.total_time_spent
     }
+
     pub fn add_time_track(&mut self, timestamp: DateTime<Utc>) {
-        self.time_tracks.push(timestamp);
-        if self.time_tracks.len() % 2 == 0 {
-            self.total_time_spent = self.calculate_total_time_spent();
+        if self.is_ongoing() {
+            self.time_tracks.last()
         }
+        else {
+            self.time_tracks.push()
+        }
+        self.total_time_spent = self.calculate_total_time_spent();
     }
 
     fn calculate_total_time_spent(&self) -> usize {
-        19
+        self.time_tracks.iter()
+            .map(|time_track| time_track.time_spent())
+            .map(|time_spent| time_spent.num_seconds() as usize)
+            .sum()
     }
 }
 
@@ -119,6 +220,10 @@ impl DbModel for Task {
             // total_time_spent: 0
         })
     }
+
+    fn get_all(conn: &Connection) -> Vec<Self> {
+        todo!()
+    }
 }
 
 struct Category {
@@ -153,15 +258,16 @@ impl DbModel for Habit {
     }
 
     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
-        conn.execute("DELETE FROM habits WHERE id=?1", [id]).unwrap();
+        conn.execute("DELETE FROM habits WHERE id=?1", [id])
+            .unwrap();
         Ok(())
     }
 
     fn from_row(row: &Row) -> Result<Self, String>
     where
-        Self: Sized 
+        Self: Sized,
     {
-        Ok(Habit{
+        Ok(Habit {
             id: row.get(0).unwrap(),
             name: row.get(1).unwrap(),
             streak: row.get(2).unwrap(),
@@ -169,16 +275,20 @@ impl DbModel for Habit {
             freq_in_interval: row.get(4).unwrap(),
         })
     }
+
+    fn get_all(conn: &Connection) -> Vec<Self> {
+        todo!()
+    }
 }
 
 impl Habit {
     pub fn new(name: &str, time_interval_s: usize, freq_in_interval: usize) -> Self {
         Self {
-            id: 0, 
-            name: name.to_string(), 
-            streak: 0, 
-            time_interval_s, 
-            freq_in_interval
+            id: 0,
+            name: name.to_string(),
+            streak: 0,
+            time_interval_s,
+            freq_in_interval,
         }
     }
 

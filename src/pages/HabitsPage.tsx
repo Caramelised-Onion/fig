@@ -3,7 +3,7 @@ import { useEffect } from "react";
 import NewHabit from "../NewHabit"
 import { Habit } from "../models";
 import useHabitsStore from "../state/habits";
-import Habits from "./Habits";
+import Habits from "../components/Habits";
 
 const HabitsPage = () => {
     const setHabits = useHabitsStore(state => state.setHabits);

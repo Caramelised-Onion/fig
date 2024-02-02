@@ -1,8 +1,8 @@
-import {Task} from "./models";
+import {Task} from "../models";
 import { invoke } from "@tauri-apps/api";
-import "./App.css";
-import "./bulma-rtl.min.css";
-import useTasksStore from "./state/tasks";
+import "../App.css";
+import "../bulma-rtl.min.css";
+import useTasksStore from "../state/tasks";
 import { useState } from "react";
 
 const TaskComponent = ({ task }: { task: Task }) => {
