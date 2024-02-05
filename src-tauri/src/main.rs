@@ -1,12 +1,12 @@
 // Prevents additional console window on Windows in release, DO NOT REMOVE!!
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-pub mod model;
+pub mod entities;
 use std::{env, fs};
 use std::{path::PathBuf, sync::Mutex};
 
 use chrono::{DateTime, Utc};
-use model::Task;
+use model::{IntervalModel, TaskModel};
 use model::{DbModel, Habit};
 use rusqlite::Connection;
 
@@ -39,9 +39,7 @@ fn create_table(conn: &Connection) -> Result<(), std::io::Error> {
     let res = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS tasks (
             id    INTEGER PRIMARY KEY,
-            name  TEXT NOT NULL,
-            time_tracks  TEXT NOT NULL,
-            total_time_spent  UInt64 NOT NULL
+            name  TEXT NOT NULL
         );
         CREATE TABLE IF NOT EXISTS habits (
             id    INTEGER PRIMARY KEY,
@@ -91,19 +89,19 @@ fn get_database_connection() -> Result<Connection, std::io::Error> {
 #[tauri::command]
 async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Result<usize, String> {
     println!("Creating task {}", name);
-    let task = Task::new(name);
+    let task = TaskModel::new(name);
     let conn = app_state.db_connection.lock().unwrap();
     task.persist(&conn)
 }
 
 #[tauri::command]
-async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task>, String> {
+async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<TaskModel>, String> {
     let conn = app_state.db_connection.lock().unwrap();
     let mut stmt = conn
-        .prepare("SELECT id, name, time_tracks, total_time_spent FROM tasks")
+        .prepare("SELECT id, name FROM tasks INNER JOIN intervals ON interval.task_id = task.id")
         .unwrap();
     let task_names_iter = stmt
-        .query_map([], |row| Ok(Task::from_row(row).unwrap()))
+        .query_map([], |row| Ok(TaskModel::from_row(row).unwrap()))
         .unwrap()
         .map(|tr| tr.unwrap());
     Ok(task_names_iter.collect())
@@ -112,16 +110,26 @@ async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task
 #[tauri::command]
 async fn add_time_track(
     app_state: tauri::State<'_, AppState>,
-    id: usize,
-) -> Result<DateTime<Utc>, String> {
+    task_id: usize,
+) -> Result<TaskModel, String> {
     let conn = app_state.db_connection.lock().unwrap();
-    let now = Utc::now();
-    let mut stmt = conn.prepare("SELECT * FROM tasks WHERE id=?1").unwrap();
-    let mut task = stmt
-        .query_row([id], |row| Ok(Task::from_row(row).unwrap()))
+    let mut stmt = conn.prepare("SELECT * FROM intervals WHERE task_id=?1  ORDER BY start_time DESC LIMIT 1;").unwrap();
+    let mut interval = stmt
+        .query_row([task_id], |row| Ok(IntervalModel::from_row(row).unwrap()))
         .unwrap();
 
-    task.add_time_track(now);
+    if interval.is_open() {
+        interval.end_time = Some(Utc::now());
+        interval.update(&conn);
+        // task.time_tracks.end().
+    } else {
+        let new_interval = IntervalModel::new(task_id);
+        new_interval.persist(&conn);
+    }
+    
+    
+
+    interval.add_time_track(now, Utc::now());
     task.update(&conn).unwrap();
     Ok(now)
 }
@@ -129,7 +137,7 @@ async fn add_time_track(
 #[tauri::command]
 async fn update_task(
     app_state: tauri::State<'_, AppState>,
-    updated_task: Task,
+    updated_task: TaskModel,
 ) -> Result<(), String> {
     let conn = app_state.db_connection.lock().unwrap();
     match updated_task.update(&conn) {
@@ -141,7 +149,7 @@ async fn update_task(
 #[tauri::command]
 async fn delete_task(app_state: tauri::State<'_, AppState>, id: usize) -> Result<(), String> {
     let conn = app_state.db_connection.lock().unwrap();
-    Task::delete(&conn, id)
+    TaskModel::delete(&conn, id)
 }
 
 #[tauri::command]
