@@ -2,7 +2,25 @@
 use std::{collections::HashSet, ops::Not};
 use chrono::{prelude::*, Duration};
 use serde::{Deserialize, Serialize};
-use crate::entities::{IntervalModel, TaskModel};
+use crate::entities::{IntervalEntity, TaskEntity};
+
+#[derive(Serialize, Deserialize)]
+pub struct Interval {
+    pub id: usize,
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
+}
+
+impl Interval {
+    fn new(self) {
+
+    }
+
+    fn time_spent(&self) -> Duration {
+        Duration::seconds(19)
+    }
+}
+
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -15,7 +33,9 @@ pub struct Task {
 
 impl Task {
     pub fn is_ongoing(&self) -> bool {
-        self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
+        // self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
+        // PLACEHOLDER
+        true
     }
     
     pub fn total_time_spent(&self) -> usize {
@@ -27,18 +47,6 @@ impl Task {
             .map(|time_track| time_track.time_spent())
             .map(|time_spent| time_spent.num_seconds() as usize)
             .sum()
-    }
-}
-
-pub struct Interval {
-    pub id: usize,
-    pub start_time: DateTime<Utc>,
-    pub end_time: Option<DateTime<Utc>>,
-}
-
-impl Interval {
-    fn new(self) {
-
     }
 }
 

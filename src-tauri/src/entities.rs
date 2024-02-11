@@ -14,7 +14,7 @@ use serde::{Deserialize, Serialize};
 // TODO repeated task?
 // optional fields like due date
 
-pub trait DbModel {
+pub trait Entity {
     /// Returns primary key of the inserted entity
     fn persist(&self, conn: &Connection) -> Result<usize, String>;
     fn update(&self, conn: &Connection) -> Result<(), String>;
@@ -27,17 +27,16 @@ pub trait DbModel {
         Self: Sized;
 }
 
-
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct IntervalModel {
+pub struct IntervalEntity {
     pub id: usize,
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
     pub task_id: usize,
 }
 
-impl IntervalModel {
+impl IntervalEntity {
     pub fn new(task_id: usize) -> Self {
         Self {
             id: 0,
@@ -58,7 +57,7 @@ impl IntervalModel {
     }
 }
 
-impl DbModel for IntervalModel {
+impl Entity for IntervalEntity {
     fn persist(&self, conn: &Connection) -> Result<usize, String> {
         let insert_result = match self.end_time {
             Some(end_time) => conn.execute(
@@ -117,12 +116,12 @@ impl DbModel for IntervalModel {
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct TaskModel {
+pub struct TaskEntity {
     pub id: usize,
     pub name: String,
 }
 
-impl TaskModel {
+impl TaskEntity {
     pub fn new(name: &str) -> Self {
         Self {
             id: 0,
@@ -131,24 +130,17 @@ impl TaskModel {
     }
 }
 
-impl DbModel for TaskModel {
+impl Entity for TaskEntity {
     // TODO PhatomData for this??
-    fn persist(&self, conn: &Connection) -> Result<usize, String> {        conn.execute(
-            "INSERT INTO tasks (name) VALUES (?1)",
-            (self.name.clone(),),
-        )
-        .unwrap();
+    fn persist(&self, conn: &Connection) -> Result<usize, String> {
+        conn.execute("INSERT INTO tasks (name) VALUES (?1)", (self.name.clone(),))
+            .unwrap();
         Ok(conn.last_insert_rowid() as usize)
     }
 
     fn update(&self, conn: &Connection) -> Result<(), String> {
-        conn.execute(
-            "UPDATE tasks SET name=?1 WHERE id=?2",
-            (
-                self.name.clone(),
-            ),
-        )
-        .unwrap();
+        conn.execute("UPDATE tasks SET name=?1 WHERE id=?2", (self.name.clone(),))
+            .unwrap();
         Ok(())
     }
 
@@ -162,7 +154,7 @@ impl DbModel for TaskModel {
         let time_tracks: Vec<DateTime<Utc>> =
             serde_json::from_str(&serialized_time_tracks).unwrap();
 
-        Ok(TaskModel {
+        Ok(TaskEntity {
             id: row.get(0).unwrap(),
             name: row.get(1).unwrap(),
         })
@@ -173,16 +165,9 @@ impl DbModel for TaskModel {
     }
 }
 
-struct Category {
-    name: String,
-    id: u32,
-    parents: HashSet<u32>,
-    children: HashSet<u32>,
-}
-
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct HabitModel {
+pub struct HabitEntity {
     pub id: usize,
     pub name: String,
     pub streak: usize,
@@ -190,7 +175,7 @@ pub struct HabitModel {
     pub freq_in_interval: usize,
 }
 
-impl DbModel for HabitModel {
+impl Entity for HabitEntity {
     fn persist(&self, conn: &Connection) -> Result<usize, String> {
         conn.execute(
             "INSERT INTO habits (name, streak, time_interval_s, freq_in_interval) VALUES (?1, ?2, ?3, ?4)",
@@ -214,7 +199,7 @@ impl DbModel for HabitModel {
     where
         Self: Sized,
     {
-        Ok(HabitModel {
+        Ok(HabitEntity {
             id: row.get(0).unwrap(),
             name: row.get(1).unwrap(),
             streak: row.get(2).unwrap(),
@@ -228,7 +213,7 @@ impl DbModel for HabitModel {
     }
 }
 
-impl HabitModel {
+impl HabitEntity {
     pub fn new(name: &str, time_interval_s: usize, freq_in_interval: usize) -> Self {
         Self {
             id: 0,
