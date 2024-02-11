@@ -1,8 +1,8 @@
-import {Task} from "./models";
+import {Task} from "../models";
 import { invoke } from "@tauri-apps/api";
-import "./App.css";
-import "./bulma-rtl.min.css";
-import useTasksStore from "./state/tasks";
+import "../App.css";
+import "../bulma-rtl.min.css";
+import useTasksStore from "../state/tasks";
 import { useState } from "react";
 
 const TaskComponent = ({ task }: { task: Task }) => {
@@ -12,7 +12,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
     const setTasks = useTasksStore(state => state.setTasks);
 
     const getClassName = (task: Task) => {
-        return task.timeTracks.length % 2 === 0 ? "" : " has-background-success"
+        return task.intervals.length % 2 === 0 ? "" : " has-background-success"
     }
 
     const handleDelete = async () => {
@@ -21,8 +21,9 @@ const TaskComponent = ({ task }: { task: Task }) => {
     }
 
     const handleAddTimeTrack = async () => {
-        const latestTimestamp: number = await invoke("add_time_track", { id: task.id });
-        setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
+        const returnedTask: Task = await invoke("add_time_track", { taskId: task.id });
+        console.log(returnedTask.intervals);
+        // setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
     }
 
     const handleSubmit = async (evt: { preventDefault: () => void }) => {

@@ -1,4 +1,4 @@
-import HabitComponent from "../HabitComponent";
+import HabitComponent from "./HabitComponent";
 import useHabitsStore from "../state/habits";
 
 const Habits = () => {

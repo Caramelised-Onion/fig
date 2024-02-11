@@ -1,188 +1,333 @@
-use rusqlite::{Connection, Row};
-use std::collections::HashSet;
 
-use chrono::prelude::*;
+use std::{collections::HashSet, ops::Not};
+use chrono::{prelude::*, Duration};
 use serde::{Deserialize, Serialize};
+use crate::entities::{IntervalEntity, TaskEntity};
 
-// -> tags/catogeries -> DAG
-// -> time tracking
-// -> pomdoro timer/stats
-// -> habits tracking (with streaks) (link tasks/todo with habits)
-// -> integration with calendar (certain tasks/todo can show up in your calnedar
-// -> calendar: plan vs actual execution (time and whatever intervals maths would be interesting)
-
-// TODO repeated task?
-// optional fields like due date
-
-pub trait DbModel {
-    /// Returns primary key of the inserted entity
-    fn persist(&self, conn: &Connection) -> Result<usize, String>;
-    fn update(&self, conn: &Connection) -> Result<(), String>;
-    fn delete(conn: &Connection, id: usize) -> Result<(), String>;
-    fn from_row(row: &Row) -> Result<Self, String>
-    where
-        Self: Sized;
-    // TODO: add a get_all method
+#[derive(Serialize, Deserialize)]
+pub struct Interval {
+    pub start_time: DateTime<Utc>,
+    pub end_time: Option<DateTime<Utc>>,
 }
+
+impl Interval {
+    pub fn from_entity(entity: &IntervalEntity) -> Self {
+        Self {
+            start_time: entity.start_time,
+            end_time: entity.end_time
+        }
+    }
+    
+    fn new(self) {
+
+    }
+
+    fn time_spent(&self) -> Duration {
+        Duration::seconds(19)
+    }
+}
+
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub id: usize,
     pub name: String,
-    // categories: HashSet<Category>,
-    // habit: Option<Habit>,
-    // due_date: Option<DateTime<Utc>>,
-    pub time_tracks: Vec<DateTime<Utc>>,
+    pub intervals: Vec<Interval>,
     pub total_time_spent: usize,
 }
 
+impl Into<TaskEntity> for Task {
+    fn into(self) -> TaskEntity {
+        TaskEntity {
+            id: self.id,
+            name: self.name,
+        }
+    }
+}
+
 impl Task {
-    // fn complete(&mut self) {
-    //     self.habit.as_mut().map(|h| h.increment());
-    // }
-    // fn is_in_progress(&self) -> bool {
-    //     self.time_tracks.len() % 2 == 1
-    // }
-    // fn change_session_state(&mut self) {
-    //     self.time_tracks.push(Utc::now());
-    // }
-    pub fn new(name: &str) -> Self {
+    pub fn from_entities(entity: &TaskEntity, interval_entities: Vec<IntervalEntity>) -> Self {
+        let intervals = interval_entities.iter()
+            .map(|ie| Interval::from_entity(ie)).collect();
         Self {
-            id: 0,
-            name: name.to_string(),
-            time_tracks: Vec::new(),
-            total_time_spent: 0,
+            id: entity.id,
+            name: entity.name.clone(),
+            intervals,
+            total_time_spent: 19
         }
     }
 
+
+    pub fn is_ongoing(&self) -> bool {
+        // self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
+        // PLACEHOLDER
+        true
+    }
+    
     pub fn total_time_spent(&self) -> usize {
         self.total_time_spent
     }
-    pub fn add_time_track(&mut self, timestamp: DateTime<Utc>) {
-        self.time_tracks.push(timestamp);
-        if self.time_tracks.len() % 2 == 0 {
-            self.total_time_spent = self.calculate_total_time_spent();
-        }
-    }
-
+    
     fn calculate_total_time_spent(&self) -> usize {
-        19
+        self.intervals.iter()
+            .map(|time_track| time_track.time_spent())
+            .map(|time_spent| time_spent.num_seconds() as usize)
+            .sum()
     }
 }
 
-impl DbModel for Task {
-    // TODO PhatomData for this??
-    fn persist(&self, conn: &Connection) -> Result<usize, String> {
-        let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
 
-        println!("time_tracks_repr: {:?}", time_tracks_repr);
-        conn.execute(
-            "INSERT INTO tasks (name, time_tracks, total_time_spent) VALUES (?1, ?2, ?3)",
-            (self.name.clone(), time_tracks_repr, self.total_time_spent),
-        )
-        .unwrap();
-        Ok(conn.last_insert_rowid() as usize)
-    }
+// See https://doc.rust-lang.org/rust-by-example/conversion/from_into.html
+// impl From<IntervalModel> for Interval {
+//     fn from(w: IntervalModel) -> Interval {
+//         w.0
+//     }  
+// }
 
-    fn update(&self, conn: &Connection) -> Result<(), String> {
-        // TODO: only update the fields that actually need updating
-        let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
-        conn.execute(
-            "UPDATE tasks SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4",
-            (
-                self.name.clone(),
-                time_tracks_repr,
-                self.total_time_spent,
-                self.id,
-            ),
-        )
-        .unwrap();
-        Ok(())
-    }
+// // -> tags/catogeries -> DAG
+// // -> time tracking
+// // -> pomdoro timer/stats
+// // -> habits tracking (with streaks) (link tasks/todo with habits)
+// // -> integration with calendar (certain tasks/todo can show up in your calnedar
+// // -> calendar: plan vs actual execution (time and whatever intervals maths would be interesting)
 
-    fn delete(conn: &Connection, id: usize) -> Result<(), String> {
-        conn.execute("DELETE FROM tasks WHERE id=?1", [id]).unwrap();
-        Ok(())
-    }
+// // TODO repeated task?
+// // optional fields like due date
 
-    fn from_row(row: &Row) -> Result<Self, String> {
-        let serialized_time_tracks: String = row.get(2).unwrap();
-        let time_tracks: Vec<DateTime<Utc>> =
-            serde_json::from_str(&serialized_time_tracks).unwrap();
+// pub struct IntervalModel {
+//     pub id: usize,
+//     pub start_time: DateTime<Utc>,
+//     pub end_time: Option<DateTime<Utc>>,
+//     pub task_id: usize,
+// }
 
-        Ok(Task {
-            id: row.get(0).unwrap(),
-            name: row.get(1).unwrap(),
-            time_tracks: time_tracks,
-            total_time_spent: row.get(3).unwrap(),
-            // total_time_spent: 0
-        })
-    }
-}
+// impl IntervalModel {
+//     pub fn new(task_id: usize) -> Self {
+//         Self {
+//             id: 0,
+//             start_time: Utc::now(),
+//             end_time: None,
+//             task_id,
+//         }
+//     }
 
-struct Category {
-    name: String,
-    id: u32,
-    parents: HashSet<u32>,
-    children: HashSet<u32>,
-}
+//     pub fn is_open(&self) -> bool {
+//         self.end_time.is_some()
+//     }
 
-#[derive(Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Habit {
-    pub id: usize,
-    pub name: String,
-    pub streak: usize,
-    pub time_interval_s: usize,
-    pub freq_in_interval: usize,
-}
+//     pub fn time_spent(&self) -> Duration {
+//         self.end_time
+//             .unwrap_or_else(|| Utc::now())
+//             .signed_duration_since(self.start_time)
+//     }
+// }
 
-impl DbModel for Habit {
-    fn persist(&self, conn: &Connection) -> Result<usize, String> {
-        conn.execute(
-            "INSERT INTO habits (name, streak, time_interval_s, freq_in_interval) VALUES (?1, ?2, ?3, ?4)",
-            (self.name.clone(), self.streak, self.time_interval_s, self.freq_in_interval),
-        )
-        .unwrap();
-        Ok(conn.last_insert_rowid() as usize)
-    }
+// impl DbModel for IntervalModel {
+//     fn persist(&self, conn: &Connection) -> Result<usize, String> {
+//         let insert_result = match self.end_time {
+//             Some(end_time) => conn.execute(
+//                 "INSERT INTO intervals (start_time, end_time, task_id) VALUES (?1, ?2, ?3)",
+//                 (
+//                     self.start_time.timestamp(),
+//                     end_time.timestamp(),
+//                     self.task_id,
+//                 ),
+//             ),
+//             None => conn.execute(
+//                 "INSERT INTO intervals (start_time, task_id) VALUES (?1, ?2)",
+//                 (self.start_time.timestamp(), self.task_id),
+//             ),
+//         };
+//         match insert_result {
+//             Ok(_) => Ok(conn.last_insert_rowid() as usize),
+//             Err(err) => Err(err.to_string()),
+//         }
+//     }
 
-    fn update(&self, conn: &Connection) -> Result<(), String> {
-        todo!()
-    }
+//     fn update(&self, conn: &Connection) -> Result<(), String> {
+//         todo!()
+//     }
 
-    fn delete(conn: &Connection, id: usize) -> Result<(), String> {
-        conn.execute("DELETE FROM habits WHERE id=?1", [id]).unwrap();
-        Ok(())
-    }
+//     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+//         todo!()
+//     }
 
-    fn from_row(row: &Row) -> Result<Self, String>
-    where
-        Self: Sized 
-    {
-        Ok(Habit{
-            id: row.get(0).unwrap(),
-            name: row.get(1).unwrap(),
-            streak: row.get(2).unwrap(),
-            time_interval_s: row.get(3).unwrap(),
-            freq_in_interval: row.get(4).unwrap(),
-        })
-    }
-}
+//     fn from_row(row: &Row) -> Result<Self, String>
+//     where
+//         Self: Sized,
+//     {
+//         let start_time = DateTime::<Utc>::from_timestamp(row.get(1).unwrap(), 0).unwrap();
+//         let end_time: Option<DateTime<Utc>> = row
+//             .get(2)
+//             .ok()
+//             .map(|ts| DateTime::from_timestamp(ts, 0))
+//             .flatten();
 
-impl Habit {
-    pub fn new(name: &str, time_interval_s: usize, freq_in_interval: usize) -> Self {
-        Self {
-            id: 0, 
-            name: name.to_string(), 
-            streak: 0, 
-            time_interval_s, 
-            freq_in_interval
-        }
-    }
+//         Ok(Self {
+//             id: row.get(0).unwrap(),
+//             start_time,
+//             end_time,
+//             task_id: row.get(3).unwrap(),
+//         })
+//     }
 
-    fn increment(&mut self) {
-        todo!()
-    }
-}
+//     fn get_all(conn: &Connection) -> Vec<Self>
+//     where
+//         Self: Sized,
+//     {
+//         todo!()
+//     }
+// }
+
+// pub struct TaskModel {
+//     pub id: usize,
+//     pub name: String,
+// }
+
+// impl TaskModel {
+//     pub fn new(name: &str) -> Self {
+//         Self {
+//             id: 0,
+//             name: name.to_string(),
+//         }
+//     }
+
+//     pub fn is_ongoing(&self) -> bool {
+//         self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
+//     }
+
+//     pub fn total_time_spent(&self) -> usize {
+//         self.total_time_spent
+//     }
+
+//     fn calculate_total_time_spent(&self) -> usize {
+//         self.time_tracks.iter()
+//             .map(|time_track| time_track.time_spent())
+//             .map(|time_spent| time_spent.num_seconds() as usize)
+//             .sum()
+//     }
+// }
+
+// impl DbModel for TaskModel {
+//     // TODO PhatomData for this??
+//     fn persist(&self, conn: &Connection) -> Result<usize, String> {
+//         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
+
+//         println!("time_tracks_repr: {:?}", time_tracks_repr);
+//         conn.execute(
+//             "INSERT INTO tasks (name, time_tracks, total_time_spent) VALUES (?1, ?2, ?3)",
+//             (self.name.clone(), time_tracks_repr, self.total_time_spent),
+//         )
+//         .unwrap();
+//         Ok(conn.last_insert_rowid() as usize)
+//     }
+
+//     fn update(&self, conn: &Connection) -> Result<(), String> {
+//         // TODO: only update the fields that actually need updating
+//         let time_tracks_repr: String = serde_json::to_string(&self.time_tracks).unwrap();
+//         conn.execute(
+//             "UPDATE tasks SET name=?1, time_tracks=?2, total_time_spent=?3 WHERE id=?4",
+//             (
+//                 self.name.clone(),
+//                 time_tracks_repr,
+//                 self.total_time_spent,
+//                 self.id,
+//             ),
+//         )
+//         .unwrap();
+//         Ok(())
+//     }
+
+//     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+//         conn.execute("DELETE FROM tasks WHERE id=?1", [id]).unwrap();
+//         Ok(())
+//     }
+
+//     fn from_row(row: &Row) -> Result<Self, String> {
+//         let serialized_time_tracks: String = row.get(2).unwrap();
+//         let time_tracks: Vec<DateTime<Utc>> =
+//             serde_json::from_str(&serialized_time_tracks).unwrap();
+
+//         Ok(TaskModel {
+//             id: row.get(0).unwrap(),
+//             name: row.get(1).unwrap(),
+//             time_tracks: time_tracks,
+//             total_time_spent: row.get(3).unwrap(),
+//             // total_time_spent: 0
+//         })
+//     }
+
+//     fn get_all(conn: &Connection) -> Vec<Self> {
+//         todo!()
+//     }
+// }
+
+// struct Category {
+//     name: String,
+//     id: u32,
+//     parents: HashSet<u32>,
+//     children: HashSet<u32>,
+// }
+
+// pub struct Habit {
+//     pub id: usize,
+//     pub name: String,
+//     pub streak: usize,
+//     pub time_interval_s: usize,
+//     pub freq_in_interval: usize,
+// }
+
+// impl DbModel for Habit {
+//     fn persist(&self, conn: &Connection) -> Result<usize, String> {
+//         conn.execute(
+//             "INSERT INTO habits (name, streak, time_interval_s, freq_in_interval) VALUES (?1, ?2, ?3, ?4)",
+//             (self.name.clone(), self.streak, self.time_interval_s, self.freq_in_interval),
+//         )
+//         .unwrap();
+//         Ok(conn.last_insert_rowid() as usize)
+//     }
+
+//     fn update(&self, conn: &Connection) -> Result<(), String> {
+//         todo!()
+//     }
+
+//     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+//         conn.execute("DELETE FROM habits WHERE id=?1", [id])
+//             .unwrap();
+//         Ok(())
+//     }
+
+//     fn from_row(row: &Row) -> Result<Self, String>
+//     where
+//         Self: Sized,
+//     {
+//         Ok(Habit {
+//             id: row.get(0).unwrap(),
+//             name: row.get(1).unwrap(),
+//             streak: row.get(2).unwrap(),
+//             time_interval_s: row.get(3).unwrap(),
+//             freq_in_interval: row.get(4).unwrap(),
+//         })
+//     }
+
+//     fn get_all(conn: &Connection) -> Vec<Self> {
+//         todo!()
+//     }
+// }
+
+// impl Habit {
+//     pub fn new(name: &str, time_interval_s: usize, freq_in_interval: usize) -> Self {
+//         Self {
+//             id: 0,
+//             name: name.to_string(),
+//             streak: 0,
+//             time_interval_s,
+//             freq_in_interval,
+//         }
+//     }
+
+//     fn increment(&mut self) {
+//         todo!()
+//     }
+// }

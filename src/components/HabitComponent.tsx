@@ -1,4 +1,4 @@
-import { Habit } from "./models"
+import { Habit } from "../models"
 
 const HabitComponent = ({ habit }: { habit: Habit }) => {
     return (

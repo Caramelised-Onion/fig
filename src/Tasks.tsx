@@ -1,6 +1,6 @@
 import useTasksStore from "./state/tasks";
 import "./App.css";
-import TaskComponent from "./TaskComponent";
+import TaskComponent from "./components/TaskComponent";
 
 const Tasks = () => {
     const tasks = useTasksStore(state => state.tasks);
