@@ -20,10 +20,11 @@ const TaskComponent = ({ task }: { task: Task }) => {
         setTasks(tasks.filter(t => t.id !== task.id));
     }
 
-    // const handleAddTimeTrack = async () => {
-    //     const latestTimestamp: number = await invoke("add_time_track", { id: task.id });
-    //     setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
-    // }
+    const handleAddTimeTrack = async () => {
+        const returnedTask: Task = await invoke("add_time_track", { taskId: task.id });
+        console.log(returnedTask.intervals);
+        // setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
+    }
 
     const handleSubmit = async (evt: { preventDefault: () => void }) => {
         evt.preventDefault();
@@ -51,7 +52,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
                 Edit task
             </button>
             <button onClick={handleDelete} >Delet</button>
-            {/* <button onClick={handleAddTimeTrack}>add time track</button> */}
+            <button onClick={handleAddTimeTrack}>add time track</button>
         </div>
     )
 }

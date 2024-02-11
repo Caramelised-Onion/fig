@@ -21,7 +21,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             create_task,
             get_all_tasks,
-            // add_time_track,
+            add_time_track,
             delete_task,
             update_task,
             // create_habit,
@@ -132,32 +132,49 @@ async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task
     Ok(res)
 }
 
-// #[tauri::command]
-// async fn add_time_track(
-//     app_state: tauri::State<'_, AppState>,
-//     task_id: usize,
-// ) -> Result<TaskEntity, String> {
-//     let conn = app_state.db_connection.lock().unwrap();
-//     let mut stmt = conn
-//         .prepare("SELECT * FROM intervals WHERE task_id=?1  ORDER BY start_time DESC LIMIT 1;")
-//         .unwrap();
-//     let mut interval = stmt
-//         .query_row([task_id], |row| Ok(IntervalEntity::from_row(row).unwrap()))
-//         .unwrap();
+#[tauri::command]
+async fn add_time_track(
+    app_state: tauri::State<'_, AppState>,
+    task_id: usize,
+) -> Result<Task, String> {
+    let conn = app_state.db_connection.lock().unwrap();
+    let mut stmt = conn
+        .prepare("SELECT * FROM intervals WHERE task_id=?1  ORDER BY start_time DESC LIMIT 1;")
+        .unwrap();
+    let latest_open_interval = stmt
+        .query_row([task_id], |row| Ok(IntervalEntity::from_row(row).unwrap()))
+        .ok()
+        .filter(|interval| interval.is_open());
 
-//     if interval.is_open() {
-//         interval.end_time = Some(Utc::now());
-//         interval.update(&conn);
-//         // task.time_tracks.end().
-//     } else {
-//         let new_interval = IntervalEntity::new(task_id);
-//         new_interval.persist(&conn);
-//     }
+    match latest_open_interval {
+        Some(mut interval) => {
+            interval.end_time = Some(Utc::now());
+            interval.update(&conn).unwrap();
+        },
+        None => {
+            let new_interval = IntervalEntity::new(task_id);
+            new_interval.persist(&conn).unwrap();
+        }
+    }
 
-//     interval.add_time_track(now, Utc::now());
-//     task.update(&conn).unwrap();
-//     Ok(now)
-// }
+    let task_entity = conn
+        .prepare("SELECT * FROM tasks WHERE id=?1")
+        .unwrap()
+        .query_row([task_id], |row| Ok(TaskEntity::from_row(row).unwrap()))
+        .unwrap();
+
+    let mut select_intervals_for_task = conn
+        .prepare("SELECT * FROM intervals WHERE task_id = ?1")
+        .unwrap();
+    let interval_entities: Vec<IntervalEntity> = select_intervals_for_task
+        .query_map([task_entity.id], |row| Ok(IntervalEntity::from_row(row).unwrap()))
+        .unwrap()
+        .map(|ir| ir.unwrap()).collect();
+
+    let task = Task::from_entities(&task_entity, interval_entities);
+
+    Ok(task)
+}
 
 #[tauri::command]
 async fn update_task(

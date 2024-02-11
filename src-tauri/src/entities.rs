@@ -45,9 +45,9 @@ impl IntervalEntity {
             task_id,
         }
     }
-
+    // TODO move to model
     pub fn is_open(&self) -> bool {
-        self.end_time.is_some()
+        self.end_time.is_none()
     }
 
     pub fn time_spent(&self) -> Duration {
@@ -79,11 +79,21 @@ impl Entity for IntervalEntity {
         }
     }
 
+
     fn update(&self, conn: &Connection) -> Result<(), String> {
-        todo!()
+        if self.is_open() {
+            conn.execute("UPDATE intervals SET start_time=?1 WHERE id=?2", (self.start_time.timestamp(), self.id))
+            .unwrap();
+        } else {
+            conn.execute("UPDATE intervals SET start_time=?1, end_time=?2 WHERE id=?3", (self.start_time.timestamp(), self.end_time.unwrap().timestamp(), self.id))
+            .unwrap();
+        }
+        Ok(())
     }
 
     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
+        // conn.execute("DELETE FROM intervals WHERE id=?1", [id]).unwrap();
+        // Ok(())
         todo!()
     }
 
