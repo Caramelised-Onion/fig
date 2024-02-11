@@ -12,7 +12,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
     const setTasks = useTasksStore(state => state.setTasks);
 
     const getClassName = (task: Task) => {
-        return task.timeTracks.length % 2 === 0 ? "" : " has-background-success"
+        return task.intervals.length % 2 === 0 ? "" : " has-background-success"
     }
 
     const handleDelete = async () => {
@@ -20,10 +20,10 @@ const TaskComponent = ({ task }: { task: Task }) => {
         setTasks(tasks.filter(t => t.id !== task.id));
     }
 
-    const handleAddTimeTrack = async () => {
-        const latestTimestamp: number = await invoke("add_time_track", { id: task.id });
-        setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
-    }
+    // const handleAddTimeTrack = async () => {
+    //     const latestTimestamp: number = await invoke("add_time_track", { id: task.id });
+    //     setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
+    // }
 
     const handleSubmit = async (evt: { preventDefault: () => void }) => {
         evt.preventDefault();
@@ -51,7 +51,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
                 Edit task
             </button>
             <button onClick={handleDelete} >Delet</button>
-            <button onClick={handleAddTimeTrack}>add time track</button>
+            {/* <button onClick={handleAddTimeTrack}>add time track</button> */}
         </div>
     )
 }

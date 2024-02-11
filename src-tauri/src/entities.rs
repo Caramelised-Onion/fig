@@ -139,7 +139,7 @@ impl Entity for TaskEntity {
     }
 
     fn update(&self, conn: &Connection) -> Result<(), String> {
-        conn.execute("UPDATE tasks SET name=?1 WHERE id=?2", (self.name.clone(),))
+        conn.execute("UPDATE tasks SET name=?1 WHERE id=?2", (self.name.clone(), self.id))
             .unwrap();
         Ok(())
     }
@@ -150,10 +150,6 @@ impl Entity for TaskEntity {
     }
 
     fn from_row(row: &Row) -> Result<Self, String> {
-        let serialized_time_tracks: String = row.get(2).unwrap();
-        let time_tracks: Vec<DateTime<Utc>> =
-            serde_json::from_str(&serialized_time_tracks).unwrap();
-
         Ok(TaskEntity {
             id: row.get(0).unwrap(),
             name: row.get(1).unwrap(),

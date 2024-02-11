@@ -1,7 +1,12 @@
+export type Interval = {
+    start_time: Date,
+    end_time: Date | undefined,
+}
+
 export type Task = {
     id: number,
     name: string,
-    timeTracks: number[],
+    intervals: Interval[],
     totalTimeSpent: number
 }
 

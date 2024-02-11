@@ -6,12 +6,18 @@ use crate::entities::{IntervalEntity, TaskEntity};
 
 #[derive(Serialize, Deserialize)]
 pub struct Interval {
-    pub id: usize,
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
 }
 
 impl Interval {
+    pub fn from_entity(entity: &IntervalEntity) -> Self {
+        Self {
+            start_time: entity.start_time,
+            end_time: entity.end_time
+        }
+    }
+    
     fn new(self) {
 
     }
@@ -27,11 +33,32 @@ impl Interval {
 pub struct Task {
     pub id: usize,
     pub name: String,
-    pub time_tracks: Vec<Interval>,
+    pub intervals: Vec<Interval>,
     pub total_time_spent: usize,
 }
 
+impl Into<TaskEntity> for Task {
+    fn into(self) -> TaskEntity {
+        TaskEntity {
+            id: self.id,
+            name: self.name,
+        }
+    }
+}
+
 impl Task {
+    pub fn from_entities(entity: &TaskEntity, interval_entities: Vec<IntervalEntity>) -> Self {
+        let intervals = interval_entities.iter()
+            .map(|ie| Interval::from_entity(ie)).collect();
+        Self {
+            id: entity.id,
+            name: entity.name.clone(),
+            intervals,
+            total_time_spent: 19
+        }
+    }
+
+
     pub fn is_ongoing(&self) -> bool {
         // self.time_tracks.last().map_or_else(|| false, |tt| tt.is_open())
         // PLACEHOLDER
@@ -43,7 +70,7 @@ impl Task {
     }
     
     fn calculate_total_time_spent(&self) -> usize {
-        self.time_tracks.iter()
+        self.intervals.iter()
             .map(|time_track| time_track.time_spent())
             .map(|time_spent| time_spent.num_seconds() as usize)
             .sum()
