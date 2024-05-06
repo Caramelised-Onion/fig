@@ -40,6 +40,7 @@ fn startup() -> Result<AppState, std::io::Error> {
 }
 
 fn create_table(conn: &Connection) -> Result<(), std::io::Error> {
+    // TODO: test Cascade deletion
     let res = conn.execute_batch(
         "CREATE TABLE IF NOT EXISTS tasks (
             id    INTEGER PRIMARY KEY,
@@ -58,6 +59,7 @@ fn create_table(conn: &Connection) -> Result<(), std::io::Error> {
             end_time INTEGER,
             task_id  INTEGER,
             FOREIGN KEY(task_id) REFERENCES tasks(id)
+            ON DELETE CASCADE
         );",
     );
     match res {

@@ -45,6 +45,7 @@ impl IntervalEntity {
             task_id,
         }
     }
+    // 06/05/2024
     // TODO move to model
     pub fn is_open(&self) -> bool {
         self.end_time.is_none()

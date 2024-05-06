@@ -1,0 +1,4 @@
+- [ ] Finish up CRUD for intervals
+    - [ ] Implement missing entity methods
+    - [ ] Move business logic functions onto the models
+- [ ] Some other stuff
