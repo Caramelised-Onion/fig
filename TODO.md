@@ -1,4 +1,8 @@
-- [ ] Finish up CRUD for intervals
-    - [ ] Implement missing entity methods
-    - [ ] Move business logic functions onto the models
-- [ ] Some other stuff
+- [x] Finish up basic CRUD for intervals
+    - [x] Move business logic functions onto the models
+    - [x] Cache total time spent on Task model so frontend doesn't need to calculate it
+- [ ] Real-time updates for open tasks
+    - [ ] Send periodic events for open tasks to update their intervals/total time spent
+    - [ ] Use the events on the frontend
+- [ ] Editing time tracks
+- [ ] UX/UI improvement

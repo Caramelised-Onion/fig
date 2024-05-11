@@ -15,8 +15,9 @@ const NewTask = () => {
         const givenTask: Task = {
             id: taskId,
             name: taskInput,
-            timeTracks: [],
-            totalTimeSpent: 0
+            intervals: [],
+            totalTimeSpent: 0,
+            isOpen: false
         }
         setTasks(tasks.concat(givenTask));
         setTaskInput("");

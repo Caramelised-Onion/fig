@@ -104,33 +104,12 @@ async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Resul
 #[tauri::command]
 async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task>, String> {
     let conn = app_state.db_connection.lock().unwrap();
-    // let mut stmt = conn
-    //     .prepare("SELECT tasks.id, name FROM tasks LEFT JOIN intervals ON intervals.task_id = tasks.id")
-    //     .unwrap();
-    let mut select_tasks = conn
-        .prepare("SELECT * FROM tasks")
-        .unwrap();
-    let tasks_iter = select_tasks
-        .query_map([], |row| Ok(TaskEntity::from_row(row).unwrap()))
-        .unwrap()
-        .map(|tr| tr.unwrap());
-    
     let mut res: Vec<Task> = vec![];
-    for task_entity in tasks_iter {
-        let mut select_intervals_for_task = conn
-            .prepare("SELECT * FROM intervals WHERE task_id = ?1")
-            .unwrap();
-        let intervals_iter: Vec<IntervalEntity> = select_intervals_for_task
-            .query_map([task_entity.id], |row| Ok(IntervalEntity::from_row(row).unwrap()))
-            .unwrap()
-            .map(|ir| ir.unwrap()).collect();
-        
-        let task = Task::from_entities(&task_entity, intervals_iter);
-        // create
+    for task_entity in TaskEntity::get_all(&conn) {
+        let intervals = IntervalEntity::get_all_for_task(task_entity.id, &conn);
+        let task = Task::from_entities(&task_entity, intervals);
         res.push(task);
     }
-    
-
     Ok(res)
 }
 

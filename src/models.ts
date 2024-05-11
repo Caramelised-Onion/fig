@@ -8,6 +8,7 @@ export type Task = {
     name: string,
     intervals: Interval[],
     totalTimeSpent: number
+    isOpen: boolean
 }
 
 export type Habit = {

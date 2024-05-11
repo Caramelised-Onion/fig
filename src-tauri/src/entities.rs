@@ -45,6 +45,18 @@ impl IntervalEntity {
             task_id,
         }
     }
+
+    pub fn get_all_for_task(task_id: usize, conn: &Connection) -> Vec<Self> {
+        let mut select_intervals_for_task = conn
+            .prepare("SELECT * FROM intervals WHERE task_id = ?1")
+            .unwrap();
+        select_intervals_for_task
+            .query_map([task_id], |row| Ok(IntervalEntity::from_row(row).unwrap()))
+            .unwrap()
+            .map(|ir| ir.unwrap())
+            .collect()
+    }
+
     // 06/05/2024
     // TODO move to model
     pub fn is_open(&self) -> bool {
@@ -93,9 +105,8 @@ impl Entity for IntervalEntity {
     }
 
     fn delete(conn: &Connection, id: usize) -> Result<(), String> {
-        // conn.execute("DELETE FROM intervals WHERE id=?1", [id]).unwrap();
-        // Ok(())
-        todo!()
+        conn.execute("DELETE FROM intervals WHERE id=?1", [id]).unwrap();
+        Ok(())
     }
 
     fn from_row(row: &Row) -> Result<Self, String>
@@ -168,7 +179,14 @@ impl Entity for TaskEntity {
     }
 
     fn get_all(conn: &Connection) -> Vec<Self> {
-        todo!()
+        let mut select_tasks = conn
+            .prepare("SELECT * FROM tasks")
+            .unwrap();
+        select_tasks
+            .query_map([], |row| Ok(TaskEntity::from_row(row).unwrap()))
+            .unwrap()
+            .map(|tr| tr.unwrap())
+            .collect()
     }
 }
 

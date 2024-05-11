@@ -12,7 +12,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
     const setTasks = useTasksStore(state => state.setTasks);
 
     const getClassName = (task: Task) => {
-        return task.intervals.length % 2 === 0 ? "" : " has-background-success"
+        return task.isOpen ? " has-background-success" : "";
     }
 
     const handleDelete = async () => {
@@ -22,8 +22,7 @@ const TaskComponent = ({ task }: { task: Task }) => {
 
     const handleAddTimeTrack = async () => {
         const returnedTask: Task = await invoke("add_time_track", { taskId: task.id });
-        console.log(returnedTask.intervals);
-        // setTasks(tasks.map(t => t.id === task.id ? { ...t, timeTracks: t.timeTracks.concat(latestTimestamp) } : t));   
+        setTasks(tasks.map(t => t.id === task.id ? returnedTask : t));   
     }
 
     const handleSubmit = async (evt: { preventDefault: () => void }) => {
@@ -46,7 +45,10 @@ const TaskComponent = ({ task }: { task: Task }) => {
                             onChange={({target}) => setTaskNameInput(target.value)} 
                         />
                     </form>
-                : task.name
+                : <div>
+                    <p>{task.name}</p>
+                    <p>time spent: {task.totalTimeSpent} seconds</p>
+                </div> 
             }
             <button onClick={() => setShowEditForm(!showEditForm)} className="ml-4">
                 Edit task
