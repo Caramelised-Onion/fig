@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api";
+import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 import NewTask from "../NewTask";
 import Tasks from "../Tasks";
@@ -13,6 +14,9 @@ const TaskPage = () => {
             setTasks(tasksInDb.map(t => t));
         };
         fetchTasks();
+        listen("sup", async evt => {
+          console.log("Received event");
+        })
     }, []);
 
   return (
