@@ -25,6 +25,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             create_task,
             get_all_tasks,
+            poll_for_ongoing_task_updates,
             add_time_track,
             delete_task,
             update_task,
@@ -107,32 +108,7 @@ async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Resul
 }
 
 #[tauri::command]
-async fn get_all_tasks(app: tauri::AppHandle, app_state: tauri::State<'_, AppState>) -> Result<Vec<Task>, String> {
-    if app_state.is_updating_tasks.load(std::sync::atomic::Ordering::Relaxed) {
-        println!("Already updating tasks");
-    } else {
-        println!("Starting to update tasks");
-        app_state.is_updating_tasks.store(true, std::sync::atomic::Ordering::Relaxed);
-        std::thread::spawn(move || {
-            loop {
-                thread::sleep(Duration::from_millis(1000)); 
-                let conn = get_database_connection().expect("failed to get db connection");
-                let mut stmt = conn
-                    .prepare("SELECT * FROM intervals WHERE end_time IS NULL;")
-                    .unwrap();
-                let intervals: Vec<Interval> = stmt
-                    .query_map([], |row| Ok(IntervalEntity::from_row(row).unwrap()))
-                    .unwrap()
-                    .map(|ir| ir.unwrap())
-                    .map(|ent| Interval::from_entity(&ent))
-                    .collect();
-                for interval in intervals {
-                    println!("open interval with start: {}", interval.start_time.to_rfc3339());
-                }
-                app.emit_all("sup", "hello there").unwrap();
-            }
-        });
-    }
+async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task>, String> {
     let mut res: Vec<Task> = vec![];
     let conn = app_state.db_connection.lock().unwrap();
     for task_entity in TaskEntity::get_all(&conn) {
@@ -141,6 +117,38 @@ async fn get_all_tasks(app: tauri::AppHandle, app_state: tauri::State<'_, AppSta
         res.push(task);
     }
     Ok(res)
+}
+
+#[tauri::command]
+async fn poll_for_ongoing_task_updates(app: tauri::AppHandle, app_state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if app_state.is_updating_tasks.load(std::sync::atomic::Ordering::Relaxed) {
+        println!("Already updating tasks");
+        return Ok(())
+    }
+
+    app_state.is_updating_tasks.store(true, std::sync::atomic::Ordering::Relaxed);
+    loop {
+        if !app_state.is_updating_tasks.load(std::sync::atomic::Ordering::Relaxed) {
+            println!("No longer updating tasks");
+            break;
+        }
+        thread::sleep(Duration::from_millis(1000)); 
+        let conn = app_state.db_connection.lock().unwrap();
+        let mut stmt = conn
+            .prepare("SELECT * FROM intervals WHERE end_time IS NULL;")
+            .unwrap();
+        let intervals: Vec<Interval> = stmt
+            .query_map([], |row| Ok(IntervalEntity::from_row(row).unwrap()))
+            .unwrap()
+            .map(|ir| ir.unwrap())
+            .map(|ent| Interval::from_entity(&ent))
+            .collect();
+        for interval in intervals {
+            println!("open interval with start: {}", interval.start_time.to_rfc3339());
+        }
+        app.emit_all("sup", "hello there").unwrap();
+    }
+    Ok(())
 }
 
 #[tauri::command]

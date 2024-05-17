@@ -14,6 +14,7 @@ const TaskPage = () => {
             setTasks(tasksInDb.map(t => t));
         };
         fetchTasks();
+        invoke("poll_for_ongoing_task_updates");
         listen("sup", async evt => {
           console.log("Received event");
         })
