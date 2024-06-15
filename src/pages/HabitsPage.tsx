@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { useEffect } from "react";
-import NewHabit from "../NewHabit"
+import NewHabit from "../components/NewHabit"
 import { Habit } from "../models";
 import useHabitsStore from "../state/habits";
 import Habits from "../components/Habits";

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api";
 import { useEffect } from "react";
-import NewTask from "../NewTask";
-import Tasks from "../Tasks";
+import NewTask from "../components/NewTask";
+import Tasks from "../components/Tasks";
 import { Task } from "../models";
 import useTasksStore from "../state/tasks";
 

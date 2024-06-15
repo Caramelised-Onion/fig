@@ -1,9 +1,9 @@
-import useTasksStore from "./state/tasks";
-import "./App.css";
-import TaskComponent from "./components/TaskComponent";
+import useTasksStore from "../state/tasks";
+import "../App.css";
+import TaskComponent from "./TaskComponent";
 import { useEffect } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { OngoingTasksUpdate } from "./models";
+import { OngoingTasksUpdate } from "../models";
 
 const Tasks = () => {
     const tasks = useTasksStore(state => state.tasks);
