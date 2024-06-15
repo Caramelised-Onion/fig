@@ -150,6 +150,17 @@ impl TaskEntity {
             name: name.to_string(),
         }
     }
+
+    pub fn get_ongoing(conn: &Connection) -> Vec<Self> {
+        let mut select_ongoing_tasks = conn
+            .prepare("SELECT t.id, t.name FROM tasks t INNER JOIN intervals i WHERE i.end_time IS NULL;")
+            .unwrap();
+        select_ongoing_tasks
+            .query_map([], |row| Ok(TaskEntity::from_row(row).unwrap()))
+            .unwrap()
+            .map(|tr| tr.unwrap())
+            .collect()
+    }
 }
 
 impl Entity for TaskEntity {

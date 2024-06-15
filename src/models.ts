@@ -18,3 +18,7 @@ export type Habit = {
     timeIntervalS: number,
     freqInInterval: number
 }
+
+export type OngoingTasksUpdate = {
+    updatedTasks: Task[]
+}

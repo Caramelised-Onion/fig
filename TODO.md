@@ -3,7 +3,8 @@
     - [x] Cache total time spent on Task model so frontend doesn't need to calculate it
 - [ ] Real-time updates for open tasks
     - [x] Send periodic events for open tasks to update their intervals/total time spent
-    - [ ] Wire up events to frontend
-    - [ ] Refactor
+    - [x] Wire up events to frontend
+        - [x] Send whole task updates
+    - [ ] Refactor component file locations
 - [ ] Editing time tracks
 - [ ] UX/UI improvementm

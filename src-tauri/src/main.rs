@@ -2,6 +2,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod entities;
+pub mod events;
 pub mod model;
 
 use std::sync::atomic::AtomicBool;
@@ -11,12 +12,12 @@ use std::{path::PathBuf, sync::Mutex};
 
 use chrono::Utc;
 use entities::{IntervalEntity, TaskEntity};
+use events::OngoingTasksUpdated;
 use model::Task;
 use rusqlite::Connection;
 use tauri::Manager;
 
 use crate::entities::Entity;
-use crate::model::Interval;
 
 fn main() {
     let app_state = startup().expect("error while initialising app state");
@@ -133,20 +134,13 @@ async fn poll_for_ongoing_task_updates(app: tauri::AppHandle, app_state: tauri::
             break;
         }
         thread::sleep(Duration::from_millis(1000)); 
+        let mut updated: Vec<Task> = vec![];
         let conn = app_state.db_connection.lock().unwrap();
-        let mut stmt = conn
-            .prepare("SELECT * FROM intervals WHERE end_time IS NULL;")
-            .unwrap();
-        let intervals: Vec<Interval> = stmt
-            .query_map([], |row| Ok(IntervalEntity::from_row(row).unwrap()))
-            .unwrap()
-            .map(|ir| ir.unwrap())
-            .map(|ent| Interval::from_entity(&ent))
-            .collect();
-        for interval in intervals {
-            println!("open interval with start: {}", interval.start_time.to_rfc3339());
+        for task_entity in TaskEntity::get_ongoing(&conn) {
+            let intervals = IntervalEntity::get_all_for_task(task_entity.id, &conn);
+            updated.push(Task::from_entities(&task_entity, intervals));
         }
-        app.emit_all("sup", "hello there").unwrap();
+        app.emit_all("ongoing_tasks_updated", OngoingTasksUpdated::new(updated)).unwrap();
     }
     Ok(())
 }
