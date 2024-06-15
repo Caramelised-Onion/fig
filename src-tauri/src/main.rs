@@ -2,15 +2,20 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 pub mod entities;
+pub mod events;
 pub mod model;
 
-use std::{env, fs};
+use std::sync::atomic::AtomicBool;
+use std::time::Duration;
+use std::{env, fs, thread};
 use std::{path::PathBuf, sync::Mutex};
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use entities::{IntervalEntity, TaskEntity};
+use events::OngoingTasksUpdated;
 use model::Task;
 use rusqlite::Connection;
+use tauri::Manager;
 
 use crate::entities::Entity;
 
@@ -21,6 +26,7 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             create_task,
             get_all_tasks,
+            poll_for_ongoing_task_updates,
             add_time_track,
             delete_task,
             update_task,
@@ -36,6 +42,7 @@ fn startup() -> Result<AppState, std::io::Error> {
     create_table(&conn)?;
     Ok(AppState {
         db_connection: Mutex::new(conn),
+        is_updating_tasks: AtomicBool::new(false),
     })
 }
 
@@ -103,14 +110,39 @@ async fn create_task(app_state: tauri::State<'_, AppState>, name: &str) -> Resul
 
 #[tauri::command]
 async fn get_all_tasks(app_state: tauri::State<'_, AppState>) -> Result<Vec<Task>, String> {
-    let conn = app_state.db_connection.lock().unwrap();
     let mut res: Vec<Task> = vec![];
+    let conn = app_state.db_connection.lock().unwrap();
     for task_entity in TaskEntity::get_all(&conn) {
         let intervals = IntervalEntity::get_all_for_task(task_entity.id, &conn);
         let task = Task::from_entities(&task_entity, intervals);
         res.push(task);
     }
     Ok(res)
+}
+
+#[tauri::command]
+async fn poll_for_ongoing_task_updates(app: tauri::AppHandle, app_state: tauri::State<'_, AppState>) -> Result<(), String> {
+    if app_state.is_updating_tasks.load(std::sync::atomic::Ordering::Relaxed) {
+        println!("Already updating tasks");
+        return Ok(())
+    }
+
+    app_state.is_updating_tasks.store(true, std::sync::atomic::Ordering::Relaxed);
+    loop {
+        if !app_state.is_updating_tasks.load(std::sync::atomic::Ordering::Relaxed) {
+            println!("No longer updating tasks");
+            break;
+        }
+        thread::sleep(Duration::from_millis(1000)); 
+        let mut updated: Vec<Task> = vec![];
+        let conn = app_state.db_connection.lock().unwrap();
+        for task_entity in TaskEntity::get_ongoing(&conn) {
+            let intervals = IntervalEntity::get_all_for_task(task_entity.id, &conn);
+            updated.push(Task::from_entities(&task_entity, intervals));
+        }
+        app.emit_all("ongoing_tasks_updated", OngoingTasksUpdated::new(updated)).unwrap();
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -204,4 +236,5 @@ async fn delete_task(app_state: tauri::State<'_, AppState>, id: usize) -> Result
 
 struct AppState {
     db_connection: Mutex<Connection>,
+    is_updating_tasks: AtomicBool,
 }

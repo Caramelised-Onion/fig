@@ -1,8 +1,10 @@
 - [x] Finish up basic CRUD for intervals
     - [x] Move business logic functions onto the models
     - [x] Cache total time spent on Task model so frontend doesn't need to calculate it
-- [ ] Real-time updates for open tasks
-    - [ ] Send periodic events for open tasks to update their intervals/total time spent
-    - [ ] Use the events on the frontend
+- [x] Real-time updates for open tasks
+    - [x] Send periodic events for open tasks to update their intervals/total time spent
+    - [x] Wire up events to frontend
+        - [x] Send whole task updates
+    - [x] Refactor component file locations
 - [ ] Editing time tracks
-- [ ] UX/UI improvement
+- [ ] UX/UI improvementm

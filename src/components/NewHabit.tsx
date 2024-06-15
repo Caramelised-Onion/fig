@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api";
 import { useState } from "react";
-import useHabitsStore from "./state/habits";
+import useHabitsStore from "../state/habits";
 
 const NewHabit = () => {
     const [nameInput, setNameInput] = useState<string>("");

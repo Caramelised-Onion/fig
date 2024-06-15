@@ -2,7 +2,7 @@ use chrono::{prelude::*, Duration};
 use serde::{Deserialize, Serialize};
 use crate::entities::{IntervalEntity, TaskEntity};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Interval {
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,
@@ -36,7 +36,7 @@ impl Interval {
 }
 
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
     pub id: usize,

@@ -1,7 +1,7 @@
 import { invoke } from "@tauri-apps/api";
 import { useState } from "react";
-import {Task} from "./models";
-import useTasksStore from "./state/tasks";
+import {Task} from "../models";
+import useTasksStore from "../state/tasks";
 
 const NewTask = () => {
     const [taskInput, setTaskInput] = useState<string>("");
